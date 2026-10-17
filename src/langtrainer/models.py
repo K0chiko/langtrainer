@@ -88,6 +88,8 @@ class Card(SQLModel, table=True):
     reps: int = 0
     lapses: int = 0
     suspended: bool = False  # ошибку отклонили как ложную
+    easy_streak: int = 0  # сколько раз подряд поставлено «Легко»
+    learned: bool = False  # выучена: в очередь повторения больше не попадает, история остаётся
 
 
 class Review(SQLModel, table=True):

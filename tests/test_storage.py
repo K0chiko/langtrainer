@@ -152,13 +152,33 @@ def test_delete_audio_keeps_the_transcript(client):
     assert "Delete audio" not in client.get(f"/sessions/{sid}").text
 
 
-def test_audio_of_unfinished_sessions_is_kept(client):
-    sid, folder = configured(client, status="failed")
-    client.post(f"/sessions/{sid}/delete-audio", follow_redirects=False)
-    assert (folder / "me.wav").exists()
-
-
 def test_storage_page_lists_sessions_by_size(client):
     sid, _ = configured(client)
     page = client.get("/storage").text
     assert "call" in page and "2.0 KB" in page and f"/sessions/{sid}/delete-audio" in page
+
+
+def test_failed_session_audio_can_be_deleted_but_retry_is_then_hidden(client):
+    sid, folder = configured(client, status="failed")
+    assert "Delete audio" in client.get(f"/sessions/{sid}").text
+    client.post(f"/sessions/{sid}/delete-audio", follow_redirects=False)
+    assert not folder.exists()
+    # the transcript exists, so a retry (analysis only) is still possible
+    assert "/retry" in client.get(f"/sessions/{sid}").text
+
+
+def test_processing_session_audio_is_kept(client):
+    sid, folder = configured(client, status="transcribing")
+    client.post(f"/sessions/{sid}/delete-audio", follow_redirects=False)
+    assert (folder / "me.wav").exists()
+
+
+def test_retry_is_hidden_when_the_audio_is_gone_and_there_is_no_transcript(client):
+    sid, _ = configured(client, status="failed")
+    with DB(client.engine) as db:
+        for u in db.exec(select(Utterance)).all():
+            db.delete(u)
+        db.commit()
+    client.post(f"/sessions/{sid}/delete-audio", follow_redirects=False)
+    page = client.get(f"/sessions/{sid}").text
+    assert "/retry" not in page and "Cannot retry" in page

@@ -262,7 +262,8 @@ def session_detail(session_id: int, request: Request, db: DBSession = Depends(ge
     session = db.get(Session, session_id)
     if session is None:
         raise HTTPException(404)
-    roles = {p.id: p.role for p in db.exec(select(Participant).where(Participant.session_id == session_id))}
+    participants = db.exec(select(Participant).where(Participant.session_id == session_id)).all()
+    roles = {p.id: p.role for p in participants}
     utterances = db.exec(
         select(Utterance).where(Utterance.session_id == session_id).order_by(Utterance.start, Utterance.id)
     ).all()
@@ -281,6 +282,7 @@ def session_detail(session_id: int, request: Request, db: DBSession = Depends(ge
             "rows": [(u, roles[u.participant_id], errors_by_utt.get(u.id, [])) for u in utterances],
             "error_count": len(errors),
             "audio_bytes": storage.session_audio_bytes(settings.audio_dir, session_id),
+            "has_audio": any(p.audio_path for p in participants),
         },
     )
 
@@ -368,7 +370,7 @@ def all_errors(request: Request, db: DBSession = Depends(get_db)):
 
 
 @app.get("/review")
-def review_page(request: Request, db: DBSession = Depends(get_db)):
+def review_page(request: Request, learned: int = 0, db: DBSession = Depends(get_db)):
     learner = db.exec(select(Learner)).first()
     card = cards.next_due(db, learner.id)
     return templates.TemplateResponse(
@@ -378,6 +380,8 @@ def review_page(request: Request, db: DBSession = Depends(get_db)):
             "card": card,
             "options": cards.rating_options(card) if card else [],
             "total": cards.due_count(db, learner.id),
+            "just_learned": bool(learned),
+            "streak": cards.EASY_STREAK_TO_LEARN,
         },
     )
 
@@ -386,8 +390,14 @@ def review_page(request: Request, db: DBSession = Depends(get_db)):
 def review_answer(card_id: int, rating: int = Form(...), db: DBSession = Depends(get_db)):
     if rating not in (1, 2, 3, 4) or db.get(cards.Card, card_id) is None:
         raise HTTPException(400)
-    cards.review(db, card_id, rating)
-    return RedirectResponse("/review", status_code=303)
+    became_learned = cards.review(db, card_id, rating)
+    return RedirectResponse("/review?learned=1" if became_learned else "/review", status_code=303)
+
+
+@app.post("/cards/{card_id}/unlearn")
+def unlearn_card(card_id: int, db: DBSession = Depends(get_db)):
+    cards.unlearn(db, card_id)
+    return RedirectResponse("/progress", status_code=303)
 
 
 _advice_running = False
@@ -424,6 +434,7 @@ def progress(request: Request, db: DBSession = Depends(get_db)):
             "series": series,
             "series_max": max((p.per100 for p in series), default=0) or 1,
             "reviews": stats.review_stats(db, learner.id),
+            "learned_cards": cards.learned_cards(db, learner.id),
             "advice": advisor.latest_advice(db, learner.id),
             "advice_running": _advice_running,
             "advice_error": _advice_error[0],

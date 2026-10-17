@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ t('review.title') }}</h1>
+{% if just_learned %}<div class="card" style="border-left:3px solid var(--good)">{{ t('review.learned', n=streak) }}</div>{% endif %}
 {% if card %}
 <p class="muted">{{ t('review.due') }}: {{ total }}</p>
 <div class="card">

@@ -15,10 +15,11 @@
 {% if session.status == 'done' %}
 <form method="post" action="/sessions/{{ session.id }}/reanalyze"><button>{{ t('session.reanalyze') }}</button></form>
 {% elif session.status == 'failed' %}
-<form method="post" action="/sessions/{{ session.id }}/retry"><button>{{ t('job.retry') }}</button></form>
+{% if rows or has_audio %}<form method="post" action="/sessions/{{ session.id }}/retry"><button>{{ t('job.retry') }}</button></form>
+{% else %}<span class="muted">{{ t('session.no_retry') }}</span>{% endif %}
 {% endif %}
-{% if session.status == 'done' and audio_bytes %}
-<form method="post" action="/sessions/{{ session.id }}/delete-audio" onsubmit='return confirm({{ t("storage.confirm") | tojson }})'><button>{{ t('session.delete_audio', size=audio_bytes | size) }}</button></form>
+{% if session.status in ('done', 'failed') and audio_bytes %}
+<form method="post" action="/sessions/{{ session.id }}/delete-audio" onsubmit='return confirm({{ t("storage.confirm_failed" if session.status == "failed" else "storage.confirm") | tojson }})'><button>{{ t('session.delete_audio', size=audio_bytes | size) }}</button></form>
 {% endif %}
 <a class="danger" href="/sessions/{{ session.id }}/delete">{{ t('session.delete') }}</a>
 </div>

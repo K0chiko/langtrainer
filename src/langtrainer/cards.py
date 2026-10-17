@@ -6,6 +6,8 @@ from sqlmodel import col, delete, func, select
 from . import srs
 from .models import Card, Error, Review, Utterance, _utcnow
 
+EASY_STREAK_TO_LEARN = 3  # столько раз подряд «Легко», и карточка считается выученной
+
 
 def _key(e: Error) -> tuple[str, str]:
     return e.original.strip().lower(), e.corrected.strip().lower()
@@ -57,7 +59,7 @@ def delete_unreviewed_cards(db: DBSession, error_ids: list[int]) -> set[int]:
 def next_due(db: DBSession, learner_id: int) -> Card | None:
     return db.exec(
         select(Card)
-        .where(Card.learner_id == learner_id, Card.suspended == False, Card.due <= _utcnow())  # noqa: E712
+        .where(Card.learner_id == learner_id, Card.suspended == False, Card.learned == False, Card.due <= _utcnow())  # noqa: E712
         .order_by(Card.due)
     ).first()
 
@@ -66,11 +68,12 @@ def due_count(db: DBSession, learner_id: int) -> int:
     return db.exec(
         select(func.count())
         .select_from(Card)
-        .where(Card.learner_id == learner_id, Card.suspended == False, Card.due <= _utcnow())  # noqa: E712
+        .where(Card.learner_id == learner_id, Card.suspended == False, Card.learned == False, Card.due <= _utcnow())  # noqa: E712
     ).one()
 
 
-def review(db: DBSession, card_id: int, rating: int) -> None:
+def review(db: DBSession, card_id: int, rating: int) -> bool:
+    """Записывает оценку. Возвращает True, если карточка только что стала выученной."""
     card = db.get(Card, card_id)
     now = _utcnow()
     new = srs.schedule(srs.State(card.interval_days, card.ease, card.reps, card.lapses, card.due), rating, now)
@@ -81,8 +84,27 @@ def review(db: DBSession, card_id: int, rating: int) -> None:
         new.lapses,
         new.due,
     )
+    card.easy_streak = card.easy_streak + 1 if rating == srs.EASY else 0
+    became_learned = card.easy_streak >= EASY_STREAK_TO_LEARN and not card.learned
+    if became_learned:
+        card.learned = True
     db.add(card)
     db.add(Review(card_id=card.id, rating=rating, reviewed_at=now, interval_after_days=new.interval_days))
+    db.commit()
+    return became_learned
+
+
+def learned_cards(db: DBSession, learner_id: int) -> list[Card]:
+    return list(db.exec(select(Card).where(Card.learner_id == learner_id, Card.learned == True).order_by(Card.id.desc())).all())  # noqa: E712
+
+
+def unlearn(db: DBSession, card_id: int) -> None:
+    """Возвращает выученную карточку в повторение: счёт «Легко» подряд начинается заново."""
+    card = db.get(Card, card_id)
+    if card is None or not card.learned:
+        return
+    card.learned, card.easy_streak, card.due = False, 0, _utcnow()
+    db.add(card)
     db.commit()
 
 

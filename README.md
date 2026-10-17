@@ -20,7 +20,7 @@ Record (2 tracks) -> Whisper (local) -> Utterances -> Language model -> Mistakes
 - **Two tracks instead of speaker detection.** The microphone is you, the system audio is the person on the call. Each track is transcribed separately, so there is no guessing who is speaking.
 - **Transcription:** `faster-whisper` (CPU, or an NVIDIA GPU). On Apple Silicon you can switch to `mlx-whisper`, see [Configuration](#configuration).
 - **Mistake analysis:** a language model of your choice (see [Choosing a language model](#choosing-a-language-model)). Utterances are sent in batches together with the neighbouring lines for context. Lines where speech recognition was unsure are flagged so recognition errors are not counted as your mistakes.
-- **Flashcards and review:** each mistake becomes a card. Reviews are scheduled with a simplified SM-2 algorithm.
+- **Flashcards and review:** each mistake becomes a card. Reviews are scheduled with a simplified SM-2 algorithm. A card you rate *Easy* three times in a row is marked **learned** and stops coming back; its history stays in your statistics, and you can return it to review from the Progress page.
 - **Progress:** mistakes are grouped by rule to show your weak spots, and the model can write short advice for the most frequent ones.
 
 The web interface has pages for sessions, all mistakes, card review and progress. Switch its language between English and Russian with the link in the top right corner. The explanations the model writes are in the learner's native language and do not depend on this switch.
@@ -125,7 +125,7 @@ Where the folder comes from, strongest first:
 2. `LT_DATA_DIR` in a `.env` file;
 3. the folder chosen in the app on first launch. It is remembered in a tiny `config.json` in your user profile (macOS `~/Library/Application Support/LangTrainer`, Windows `%APPDATA%\LangTrainer`, Linux `~/.config/langtrainer`). That file holds only the folder path.
 
-The **Storage** page shows the folder, how much space the database and audio take, and the audio size of each conversation. From there you can open the folder in Finder/Explorer and delete the audio of a finished conversation. Deleting audio keeps its text, mistakes and cards. To free more space, delete a whole conversation from its page. Changing the folder after the first choice is not supported in the app yet: set `LT_DATA_DIR`, or remove `config.json` to be asked again, and move the files yourself.
+The **Storage** page shows the folder, how much space the database and audio take, and the audio size of each conversation. From there you can open the folder in Finder/Explorer and delete the audio of a finished or failed conversation (not while it is being processed). Deleting audio keeps its text, mistakes and cards; for a failed conversation it means you can no longer retry the transcription. To free more space, delete a whole conversation from its page. Changing the folder after the first choice is not supported in the app yet: set `LT_DATA_DIR`, or remove `config.json` to be asked again, and move the files yourself.
 
 ## Project layout
 

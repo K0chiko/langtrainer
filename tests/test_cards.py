@@ -92,3 +92,47 @@ def test_rating_options_show_growing_waits():
     assert [o[0] for o in options] == [1, 2, 3, 4]
     assert options[0][2] == ("minutes", 10)
     assert options[2][2] == ("days", 1)
+
+
+def _card(db, learner, conv, part):
+    add_error(db, learner, conv, part, "I go to school.", "go", "went")
+    cards.generate_cards(db, learner.id)
+    return db.exec(select(Card)).first()
+
+
+def test_three_easy_in_a_row_marks_the_card_learned(monkeypatch):
+    db, learner, conv, part = make_db()
+    card = _card(db, learner, conv, part)
+    assert cards.review(db, card.id, 4) is False
+    assert cards.review(db, card.id, 4) is False
+    assert cards.review(db, card.id, 4) is True
+    db.refresh(card)
+    assert card.learned and card.easy_streak == 3
+    assert db.exec(select(Review)).all().__len__() == 3  # history is kept
+    card.due = card.due.replace(year=2000)
+    db.add(card)
+    db.commit()
+    assert cards.next_due(db, learner.id) is None and cards.due_count(db, learner.id) == 0
+    assert cards.generate_cards(db, learner.id) == 0  # not recreated
+
+
+def test_a_non_easy_answer_resets_the_streak():
+    db, learner, conv, part = make_db()
+    card = _card(db, learner, conv, part)
+    for rating in (4, 4, 3, 4, 4):
+        assert cards.review(db, card.id, rating) is False
+    db.refresh(card)
+    assert not card.learned and card.easy_streak == 2
+
+
+def test_unlearn_returns_the_card_with_a_fresh_streak():
+    db, learner, conv, part = make_db()
+    card = _card(db, learner, conv, part)
+    for _ in range(3):
+        cards.review(db, card.id, 4)
+    assert [c.id for c in cards.learned_cards(db, learner.id)] == [card.id]
+    cards.unlearn(db, card.id)
+    db.refresh(card)
+    assert not card.learned and card.easy_streak == 0
+    assert cards.next_due(db, learner.id).id == card.id
+    assert cards.review(db, card.id, 4) is False  # needs three new Easy answers

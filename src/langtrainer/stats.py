@@ -84,6 +84,7 @@ class ReviewStats:
     due: int
     reviews_7d: int
     recalled_7d: int  # оценки «Вспомнил» и «Легко»
+    learned: int = 0  # выученные карточки
 
     @property
     def retention_pct(self) -> int | None:
@@ -92,12 +93,14 @@ class ReviewStats:
 
 def review_stats(db: DBSession, learner_id: int, now: datetime | None = None) -> ReviewStats:
     now = now or _utcnow()
-    cards = db.exec(select(Card).where(Card.learner_id == learner_id, Card.suspended == False)).all()  # noqa: E712
-    ids = {c.id for c in cards}
+    every = db.exec(select(Card).where(Card.learner_id == learner_id, Card.suspended == False)).all()  # noqa: E712
+    cards = [c for c in every if not c.learned]
+    ids = {c.id for c in every}  # выученные остаются в статистике повторений
     recent = [r for r in db.exec(select(Review).where(Review.reviewed_at >= now - timedelta(days=7))) if r.card_id in ids]
     return ReviewStats(
         cards=len(cards),
         due=sum(1 for c in cards if c.due <= now),
         reviews_7d=len(recent),
+        learned=len(every) - len(cards),
         recalled_7d=sum(1 for r in recent if r.rating >= 3),
     )

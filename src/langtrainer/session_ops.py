@@ -11,6 +11,8 @@ from .models import Card, Error, Participant, Review, Session, SessionProgress, 
 from .progress import IN_PROGRESS
 
 MAX_TITLE = 200
+# У неудавшегося разговора звук тоже можно удалить, но повторить расшифровку после этого нельзя
+AUDIO_DELETABLE = ("done", "failed")
 
 
 class SessionBusy(RuntimeError):
@@ -79,15 +81,15 @@ def delete_session(db: DBSession, session_id: int, audio_dir: Path) -> None:
 
 
 class AudioNotDeletable(RuntimeError):
-    """Аудио можно удалить только у завершённого разговора: иначе повтор после сбоя не найдёт файлы."""
+    """Аудио нельзя удалять, пока разговор обрабатывается."""
 
 
 def delete_audio(db: DBSession, session_id: int, audio_dir: Path) -> int:
-    """Удаляет только звук разговора (расшифровка, ошибки и карточки остаются). Возвращает освобождённые байты."""
+    """Удаляет только звук разговора (расшифровка, ошибки и карточки остаются; у неудавшегося разговора пропадёт и возможность повторить расшифровку). Возвращает освобождённые байты."""
     session = db.get(Session, session_id)
     if session is None:
         return 0
-    if session.status != "done":
+    if session.status not in AUDIO_DELETABLE:
         raise AudioNotDeletable(session_id)
     root, folder = audio_dir.resolve(), (audio_dir / str(session_id)).resolve()
     freed = 0

@@ -15,8 +15,8 @@
 {% for sid, title, status, bytes in rows %}
 <div class="card row" style="justify-content:space-between">
   <span>{% if title %}<a href="/sessions/{{ sid }}">{{ title }}</a>{% else %}<span class="muted">#{{ sid }}</span>{% endif %} <span class="muted">· {{ bytes | size }}</span></span>
-  {% if status == 'done' and bytes %}
-  <form method="post" action="/sessions/{{ sid }}/delete-audio" onsubmit='return confirm({{ t("storage.confirm") | tojson }})'><button class="link">{{ t('storage.delete_audio') }}</button></form>
+  {% if status in ('done', 'failed') and bytes %}
+  <form method="post" action="/sessions/{{ sid }}/delete-audio" onsubmit='return confirm({{ t("storage.confirm_failed" if status == "failed" else "storage.confirm") | tojson }})'><button class="link">{{ t('storage.delete_audio') }}</button></form>
   {% endif %}
 </div>
 {% else %}<p class="muted">{{ t('storage.empty') }}</p>{% endfor %}

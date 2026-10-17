@@ -5,11 +5,23 @@
 
 <div style="display:flex; gap:10px; flex-wrap:wrap">
   <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('progress.cards') }}</div><b style="font-size:22px">{{ reviews.cards }}</b></div>
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('progress.learned') }}</div><b style="font-size:22px">{{ reviews.learned }}</b></div>
   <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('progress.due') }}</div><b style="font-size:22px">{{ reviews.due }}</b></div>
   <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('progress.recalled') }}</div>
     <b style="font-size:22px">{% if reviews.retention_pct is none %}—{% else %}{{ reviews.retention_pct }}%{% endif %}</b>
     <span class="muted"> {{ t('progress.of') }} {{ reviews.reviews_7d }}</span></div>
 </div>
+
+{% if learned_cards %}
+<details class="card"><summary>{{ t('progress.learned_list') }} ({{ learned_cards | length }})</summary>
+  {% for c in learned_cards %}
+  <div class="row" style="justify-content:space-between; margin:8px 0">
+    <span>{{ c.back }}</span>
+    <form method="post" action="/cards/{{ c.id }}/unlearn"><button class="link">{{ t('progress.unlearn') }}</button></form>
+  </div>
+  {% endfor %}
+</details>
+{% endif %}
 
 <h1>{{ t('progress.advice') }}</h1>
 {% if advice_error %}<div class="card" style="border-left:3px solid var(--bad)">{{ t('progress.advice_failed') }}: {{ advice_error }}</div>{% endif %}
