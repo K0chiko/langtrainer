@@ -56,7 +56,7 @@ On the very first launch the app asks **where to keep its data** (the database a
 scripts/make_mac_app.sh
 ```
 
-This builds `Language Trainer.app` in `~/Applications` (pass another folder as an argument to change that). Double-click it: it starts the server in the background and opens the page in your browser. Quit it from the Dock (right click, Quit) to stop the server; clicking its Dock icon again reopens the page. Server output goes to `data/server.log` inside the project folder. The app icon is `launcher/macos/icon.svg` (exported to `icon.icns`); if the icon looks stale in Finder, run `killall Dock Finder`.
+This builds `Language Trainer.app` in `~/Applications` (pass another folder as an argument to change that). Double-click it: it starts the server in the background and opens the page in your browser. Quit it from the Dock (right click, Quit) to stop the server; clicking its Dock icon again reopens the page. Server output goes to `data/server.log` inside the project folder. The app icon is `launcher/macos/icon.svg` (exported to `icon.icns`, and copied to `src/langtrainer/web/static/favicon.svg` for the browser tab); if the icon looks stale in Finder, run `killall Dock Finder`.
 
 The first time you record a call, macOS asks for permission for the app. In System Settings, Privacy & Security, allow it under **Microphone** and **Screen & System Audio Recording** (the app is listed there as `applet`). Run the script again after moving the project folder, because the path is built into the app.
 

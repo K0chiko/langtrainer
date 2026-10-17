@@ -19,6 +19,9 @@ sed -e "s|__PROJECT_DIR__|$PROJECT_DIR|" -e "s|__EXTRA_PATH__|$EXTRA_PATH|" laun
 osacompile -s -o "$APP" "$SRC"   # -s: stay-open, so quitting from the Dock stops the server
 rm -f "$SRC"
 cp launcher/macos/icon.icns "$APP/Contents/Resources/applet.icns"   # replaces the default script-editor icon
+# Newer macOS prefers the default icon from the asset catalog, so drop it.
+rm -f "$APP/Contents/Resources/Assets.car"
+/usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" 2>/dev/null || true
 
 PLIST="$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :CFBundleName string 'Language Trainer'" "$PLIST" 2>/dev/null || \

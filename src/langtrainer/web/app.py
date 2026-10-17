@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 from sqlmodel import select
@@ -64,7 +64,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Language Trainer", lifespan=lifespan)
 
-_SETUP_OPEN = ("/setup", "/lang/")
+_SETUP_OPEN = ("/setup", "/lang/", "/favicon.svg")
 
 
 @app.middleware("http")
@@ -83,6 +83,11 @@ def _save_upload(upload: UploadFile, session_id: int, name: str) -> str:
     with path.open("wb") as out:
         shutil.copyfileobj(upload.file, out)
     return str(path)
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon():
+    return FileResponse(Path(__file__).parent / "static" / "favicon.svg", media_type="image/svg+xml")
 
 
 @app.get("/lang/{code}")
