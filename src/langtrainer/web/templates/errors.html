@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Слабые места</h1>
+{% for rule, n in top %}<div class="card"><b>{{ rule }}</b> <span class="muted">× {{ n }}</span></div>{% else %}<p class="muted">Пока нет данных.</p>{% endfor %}
+<h1>Все ошибки</h1>
+{% for e in errors %}
+<div class="err"><span class="tag">{{ e.category }}</span><del>{{ e.original }}</del> → <ins>{{ e.corrected }}</ins><br><span class="muted">{{ e.explanation }}</span></div>
+{% endfor %}
+{% endblock %}

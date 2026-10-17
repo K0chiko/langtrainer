@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+{% if advice_running %}<meta http-equiv="refresh" content="4">{% endif %}
+<h1>Прогресс</h1>
+
+<div style="display:flex; gap:10px; flex-wrap:wrap">
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">Карточек</div><b style="font-size:22px">{{ reviews.cards }}</b></div>
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">К повторению</div><b style="font-size:22px">{{ reviews.due }}</b></div>
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">Вспомнил за 7 дней</div>
+    <b style="font-size:22px">{% if reviews.retention_pct is none %}—{% else %}{{ reviews.retention_pct }}%{% endif %}</b>
+    <span class="muted"> из {{ reviews.reviews_7d }}</span></div>
+</div>
+
+<h1>Советы</h1>
+{% if advice_error %}<div class="card" style="border-left:3px solid var(--bad)">Не удалось получить советы: {{ advice_error }}</div>{% endif %}
+{% if advice_running %}
+  <div class="card">Готовлю советы…</div>
+{% else %}
+  {% if advice %}
+    {% set insight, data = advice %}
+    <div class="card"><p style="margin:0">{{ data.summary }}</p>
+    <p class="muted" style="margin:6px 0 0">Составлено {{ (insight.created_at|local).strftime('%d.%m.%Y %H:%M') }} по {{ insight.based_on_errors }} ошибкам</p></div>
+    {% for tip in data.tips %}
+    <div class="card">
+      <b>{{ tip.title }}</b> <span class="tag">{{ tip.rule_key }}</span>
+      <p style="margin:6px 0">{{ tip.advice }}</p>
+      <p style="margin:0"><b>Попробуй:</b> {{ tip.practice }}</p>
+    </div>
+    {% endfor %}
+  {% elif not spots %}
+    <p class="muted">Советы появятся, когда накопятся ошибки.</p>
+  {% endif %}
+  {% if spots %}<form method="post" action="/progress/advice"><button>{{ 'Обновить советы' if advice else 'Получить советы' }}</button></form>{% endif %}
+{% endif %}
+
+<h1>Ошибок на 100 слов по разговорам</h1>
+{% if series %}
+<div class="card" style="display:flex; align-items:flex-end; gap:8px; height:140px; overflow-x:auto">
+  {% for p in series %}
+  <a href="/sessions/{{ p.session_id }}" title="{{ p.title }}: {{ p.errors }} ош. на {{ p.words }} слов" style="display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:34px; text-decoration:none">
+    <span class="muted" style="font-size:12px">{{ p.per100 }}</span>
+    <span style="display:block; width:24px; background:var(--accent); border-radius:4px 4px 0 0; height:{{ (p.per100 / series_max * 80) | round | int + 2 }}px"></span>
+    <span class="muted" style="font-size:11px">{{ (p.date|local).strftime('%d.%m') }}</span>
+  </a>
+  {% endfor %}
+</div>
+<p class="muted">Чем ниже столбик, тем меньше ошибок на то же количество слов. Сравнивать имеет смысл, когда разговоров несколько.</p>
+{% else %}<p class="muted">Пока нет завершённых разговоров.</p>{% endif %}
+
+<h1>Слабые места</h1>
+{% for s in spots %}
+<div class="card">
+  <b>{{ s.rule }}</b> <span class="muted">× {{ s.count }}{% if s.recent != s.count %}, за {{ recent_days }} дн.: {{ s.recent }}{% endif %}</span>
+  {% for wrong, right in s.examples %}<div class="err"><del>{{ wrong }}</del> → <ins>{{ right }}</ins></div>{% endfor %}
+</div>
+{% else %}<p class="muted">Пока нет данных.</p>{% endfor %}
+
+{% if categories %}
+<h1>По типам</h1>
+<div class="card">{% for name, n in categories %}<span class="tag">{{ name }} {{ n }}</span>{% endfor %}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Language Trainer{% endblock %}</title>
+<style>
+:root { --bg:#fff; --fg:#1d1d1f; --muted:#6e6e73; --line:#e5e5ea; --accent:#0a66d6; --bad:#c62828; --good:#1b7f3b; --card:#f6f6f8; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161618; --fg:#f2f2f5; --muted:#9a9aa2; --line:#2c2c30; --accent:#4c9bff; --bad:#ff7a7a; --good:#6fd08c; --card:#202024; } }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, system-ui, sans-serif; }
+main { max-width:860px; margin:0 auto; padding:16px; }
+nav { border-bottom:1px solid var(--line); } nav main { display:flex; gap:20px; padding:12px 16px; }
+a { color:var(--accent); text-decoration:none; }
+h1 { font-size:22px; } .muted { color:var(--muted); font-size:14px; }
+.card { background:var(--card); border-radius:10px; padding:12px 14px; margin:10px 0; }
+.utt { padding:8px 0; border-bottom:1px solid var(--line); }
+.who { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.partner .text { color:var(--muted); }
+.err { margin:6px 0 2px 12px; padding-left:10px; border-left:3px solid var(--bad); font-size:15px; }
+.err.dismissed { opacity:.4; }
+del { color:var(--bad); } ins { color:var(--good); text-decoration:none; font-weight:600; }
+.tag { font-size:12px; background:var(--line); border-radius:6px; padding:1px 6px; margin-right:6px; }
+button, input[type=submit] { font:inherit; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+button.link { border:0; background:none; color:var(--muted); padding:0 4px; font-size:13px; }
+label { display:block; margin:10px 0 4px; font-size:14px; color:var(--muted); }
+input[type=text] { width:100%; box-sizing:border-box; font:inherit; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--fg); }
+</style>
+</head>
+<body>
+<nav><main><a href="/"><b>Language Trainer</b></a><a href="/">Разговоры</a><a href="/progress">Прогресс</a><a href="/errors">Все ошибки</a><a href="/review">Повторение{% if due_count() %} <span class="tag">{{ due_count() }}</span>{% endif %}</a></main></nav>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

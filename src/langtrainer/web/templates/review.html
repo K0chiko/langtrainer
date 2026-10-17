@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Повторение</h1>
+{% if card %}
+<p class="muted">К повторению: {{ total }}</p>
+<div class="card">
+  <div class="who">Исправь ошибку во фразе</div>
+  <p style="font-size:20px; margin:8px 0">{{ card.front }}</p>
+  <div id="answer" hidden>
+    <hr style="border:0; border-top:1px solid var(--line)">
+    <p style="font-size:20px; margin:8px 0"><ins>{{ card.back }}</ins></p>
+    <p class="muted">{{ card.explanation }}</p>
+    <p class="muted" style="margin-bottom:6px">Вспомнил ли ты исправление до того, как посмотрел ответ? От оценки зависит, когда карточка вернётся.</p>
+    <form method="post" action="/review/{{ card.id }}" style="display:flex; gap:8px; flex-wrap:wrap">
+      {% for rating, label, when in options %}
+      <button name="rating" value="{{ rating }}" style="display:flex; flex-direction:column; align-items:center; min-width:110px">
+        {{ label }}<span class="muted" style="font-size:12px">{{ when }}</span>
+      </button>
+      {% endfor %}
+    </form>
+  </div>
+  <button id="show" onclick="document.getElementById('answer').hidden=false; this.hidden=true">Показать ответ</button>
+</div>
+{% else %}
+<div class="card"><p>На сегодня всё. Новые карточки появятся после следующего разговора.</p></div>
+{% endif %}
+{% endblock %}

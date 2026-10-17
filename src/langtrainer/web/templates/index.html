@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+{% if sessions | selectattr('status', 'in', ['uploaded', 'transcribing', 'analyzing']) | list %}<meta http-equiv="refresh" content="5">{% endif %}
+<h1>Запись звонка</h1>
+{% if error %}<div class="card" style="border-left:3px solid var(--bad)">{{ error }}</div>{% endif %}
+<div class="card">
+{% if recording_since %}
+  <p><b style="color:var(--bad)">● Идёт запись</b> с {{ recording_since.strftime('%H:%M:%S') }}</p>
+  <form method="post" action="/record/stop"><button>Остановить и разобрать</button></form>
+{% else %}
+  <form method="post" action="/record/start"><button>● Начать запись</button></form>
+  <p class="muted">Пишутся микрофон и звук звонка (Zoom, Meet, Telegram и т. д.) в две дорожки. Нужны наушники, иначе голос собеседницы попадёт в микрофон.</p>
+{% endif %}
+</div>
+
+<h1>Или загрузить готовую запись</h1>
+<form class="card" method="post" action="/sessions" enctype="multipart/form-data">
+  <label>Название (необязательно)</label>
+  <input type="text" name="title">
+  <label>Моя дорожка (микрофон) — обязательно</label>
+  <input type="file" name="my_audio" accept="audio/*,video/*" required>
+  <label>Дорожка собеседницы (системный звук) — по желанию, но с ней разбор точнее</label>
+  <input type="file" name="partner_audio" accept="audio/*,video/*">
+  <p><input type="submit" value="Загрузить и разобрать"></p>
+  <p class="muted">Расшифровка идёт локально и может занять несколько минут. В Claude уходит только текст.</p>
+</form>
+
+<h1>Разговоры</h1>
+{% for s in sessions %}
+  <div class="card"><a href="/sessions/{{ s.id }}">{{ s.title }}</a>
+  <span class="muted"> · {{ (s.created_at|local).strftime('%d.%m.%Y %H:%M') }} · {{ s.status }}</span></div>
+{% else %}
+  <p class="muted">Пока пусто.</p>
+{% endfor %}
+{% endblock %}
