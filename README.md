@@ -46,7 +46,7 @@ uv sync
 uv run langtrainer
 ```
 
-Then open http://127.0.0.1:8000 in your browser.
+The page opens in your browser automatically (set `LT_OPEN_BROWSER=false` to turn that off). If it does not, open http://127.0.0.1:8000 yourself.
 
 On the very first launch the app asks **where to keep its data** (the database and the recordings). Recordings are large, so choose a folder you can find and clean up yourself. A suggested folder (`Documents/LangTrainer`) is filled in; use *Browse…* or type any path, for example a folder on a NAS or an external drive. The choice is remembered, so you are not asked again.
 
@@ -103,6 +103,7 @@ Settings are read from environment variables with the `LT_` prefix or from a `.e
 | Variable | Default | Meaning |
 |---|---|---|
 | `LT_DATA_DIR` | not set | Folder for the database and audio. If not set, the app asks on first launch. See [Data folder](#data-folder). |
+| `LT_OPEN_BROWSER` | `true` | Open the page in the browser when `langtrainer` starts. |
 | `LT_DATABASE_URL` | empty | SQLAlchemy URL. Empty means SQLite in the data folder. |
 | `LT_TRANSCRIBER` | `auto` | `auto` (= faster-whisper), `faster-whisper` or `mlx` (Mac only, needs ffmpeg). |
 | `LT_WHISPER_MODEL` | `small` | Whisper model. Use `small.en` or `medium.en` for English-only, more accurate. |

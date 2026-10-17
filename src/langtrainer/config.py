@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     # Куда класть аудио и (по умолчанию) файл SQLite. Не задана = приложение спросит папку при первом запуске
     # (см. storage.py). Можно указать папку на Synology или внешнем диске.
     data_dir: Path | None = None
+    # Открывать страницу в браузере при запуске `langtrainer` (launcher на Mac делает это сам и выключает опцию)
+    open_browser: bool = True
+
     # SQLAlchemy URL. Пусто = SQLite в data_dir. Пример для Synology: postgresql+psycopg://user:pw@nas:5432/lt
     database_url: str = ""
 
