@@ -2,7 +2,7 @@ import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -11,13 +11,25 @@ from sqlmodel import Session as DBSession
 from sqlmodel import select
 
 from ..config import settings
-from .. import advisor, cards, stats
+from .. import advisor, cards, i18n, stats
 from ..db import get_db, get_engine, init_db
 from ..models import Error, Learner, Participant, Session, Utterance
 from ..pipeline import run_analysis, run_session
 from ..recording import RecorderError, recorder
 
-templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+def _i18n_context(request: Request) -> dict:
+    lang = i18n.pick_language(request.cookies.get(i18n.COOKIE), request.headers.get("accept-language"))
+    return {
+        "lang": lang,
+        "languages": i18n.LANGUAGES,
+        "t": lambda key, **values: i18n.translate(lang, key, **values),
+        "tv": lambda prefix, value: i18n.translate_value(lang, prefix, value),
+    }
+
+
+templates = Jinja2Templates(
+    directory=str(Path(__file__).parent / "templates"), context_processors=[_i18n_context]
+)
 
 
 def _due_count() -> int:
@@ -51,6 +63,18 @@ def _save_upload(upload: UploadFile, session_id: int, name: str) -> str:
     with path.open("wb") as out:
         shutil.copyfileobj(upload.file, out)
     return str(path)
+
+
+@app.get("/lang/{code}")
+def set_language(code: str, request: Request):
+    if code not in i18n.LANGUAGES:
+        raise HTTPException(404)
+    # Go back to the page the switch was clicked on (path only, never an external address)
+    back = urlparse(request.headers.get("referer", ""))
+    target = (back.path or "/") + (f"?{back.query}" if back.query else "")
+    response = RedirectResponse(target if target.startswith("/") and not target.startswith("//") else "/", status_code=303)
+    response.set_cookie(i18n.COOKIE, code, max_age=365 * 24 * 3600, samesite="lax")
+    return response
 
 
 @app.get("/")

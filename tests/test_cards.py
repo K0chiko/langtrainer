@@ -90,5 +90,5 @@ def test_rating_options_show_growing_waits():
     cards.generate_cards(db, learner.id)
     options = cards.rating_options(cards.next_due(db, learner.id))
     assert [o[0] for o in options] == [1, 2, 3, 4]
-    assert options[0][2] == "через 10 мин"
-    assert options[2][2] == "через 1 дн."
+    assert options[0][2] == ("minutes", 10)
+    assert options[2][2] == ("days", 1)

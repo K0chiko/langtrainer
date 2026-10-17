@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Повторение</h1>
+<h1>{{ t('review.title') }}</h1>
 {% if card %}
-<p class="muted">К повторению: {{ total }}</p>
+<p class="muted">{{ t('review.due') }}: {{ total }}</p>
 <div class="card">
-  <div class="who">Исправь ошибку во фразе</div>
+  <div class="who">{{ t('review.prompt') }}</div>
   <p style="font-size:20px; margin:8px 0">{{ card.front }}</p>
   <div id="answer" hidden>
     <hr style="border:0; border-top:1px solid var(--line)">
     <p style="font-size:20px; margin:8px 0"><ins>{{ card.back }}</ins></p>
     <p class="muted">{{ card.explanation }}</p>
-    <p class="muted" style="margin-bottom:6px">Вспомнил ли ты исправление до того, как посмотрел ответ? От оценки зависит, когда карточка вернётся.</p>
+    <p class="muted" style="margin-bottom:6px">{{ t('review.question') }}</p>
     <form method="post" action="/review/{{ card.id }}" style="display:flex; gap:8px; flex-wrap:wrap">
       {% for rating, label, when in options %}
       <button name="rating" value="{{ rating }}" style="display:flex; flex-direction:column; align-items:center; min-width:110px">
-        {{ label }}<span class="muted" style="font-size:12px">{{ when }}</span>
+        {{ t(label) }}<span class="muted" style="font-size:12px">{{ t('wait.' ~ when[0], n=when[1]) }}</span>
       </button>
       {% endfor %}
     </form>
   </div>
-  <button id="show" onclick="document.getElementById('answer').hidden=false; this.hidden=true">Показать ответ</button>
+  <button id="show" onclick="document.getElementById('answer').hidden=false; this.hidden=true">{{ t('review.show') }}</button>
 </div>
 {% else %}
-<div class="card"><p>На сегодня всё. Новые карточки появятся после следующего разговора.</p></div>
+<div class="card"><p>{{ t('review.done') }}</p></div>
 {% endif %}
 {% endblock %}

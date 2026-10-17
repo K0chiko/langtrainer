@@ -2,19 +2,19 @@
 {% block content %}
 {% if session.status not in ('done', 'failed') %}<meta http-equiv="refresh" content="4">{% endif %}
 <h1>{{ session.title }}</h1>
-<p class="muted">Статус: <b>{{ session.status }}</b>{% if session.status_detail %} — {{ session.status_detail }}{% endif %} · ошибок: {{ error_count }}</p>
+<p class="muted">{{ t('session.status') }}: <b>{{ tv('status', session.status) }}</b>{% if session.status_detail %} — {{ session.status_detail }}{% endif %} · {{ t('session.mistakes') }}: {{ error_count }}</p>
 {% if session.status in ('done', 'failed') %}
-<form method="post" action="/sessions/{{ session.id }}/reanalyze"><button>Разобрать заново</button></form>
+<form method="post" action="/sessions/{{ session.id }}/reanalyze"><button>{{ t('session.reanalyze') }}</button></form>
 {% endif %}
 
 {% for u, role, errs in rows %}
 <div class="utt {{ role }}">
-  <div class="who">{{ 'Я' if role == 'learner' else 'Собеседница' }} · {{ '%d:%02d' % (u.start // 60, u.start % 60) }}{% if u.asr_confidence < 0.6 %} · <span title="Распознавание неуверенное">⚠ неуверенно</span>{% endif %}</div>
+  <div class="who">{{ t('session.me') if role == 'learner' else t('session.partner') }} · {{ '%d:%02d' % (u.start // 60, u.start % 60) }}{% if u.asr_confidence < 0.6 %} · <span title="{{ t('session.unsure_title') }}">{{ t('session.unsure') }}</span>{% endif %}</div>
   <div class="text">{{ u.text }}</div>
   {% for e in errs %}
   <div class="err {{ 'dismissed' if e.dismissed }}">
-    <span class="tag">{{ e.category }}</span><del>{{ e.original }}</del> → <ins>{{ e.corrected }}</ins>
-    <form style="display:inline" method="post" action="/errors/{{ e.id }}/dismiss"><button class="link">{{ 'вернуть' if e.dismissed else 'ложное' }}</button></form><br>
+    <span class="tag">{{ tv('cat', e.category) }}</span><del>{{ e.original }}</del> → <ins>{{ e.corrected }}</ins>
+    <form style="display:inline" method="post" action="/errors/{{ e.id }}/dismiss"><button class="link">{{ t('session.restore') if e.dismissed else t('session.false') }}</button></form><br>
     <span class="muted">{{ e.explanation }}</span>
   </div>
   {% endfor %}

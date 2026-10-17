@@ -86,23 +86,21 @@ def review(db: DBSession, card_id: int, rating: int) -> None:
     db.commit()
 
 
-RATING_LABELS = {1: "Не вспомнил", 2: "С трудом", 3: "Вспомнил", 4: "Легко"}
-
-
-def format_wait(due, now) -> str:
+def format_wait(due, now) -> tuple[str, int]:
+    """Когда вернётся карточка, как (ключ перевода wait.*, число); текст подставляет интерфейс."""
     minutes = round((due - now).total_seconds() / 60)
     if minutes < 60:
-        return f"через {minutes} мин"
+        return "minutes", minutes
     days = round(minutes / 1440)
     if days < 1:
-        return "через несколько часов"
+        return "hours", 0
     if days < 30:
-        return f"через {days} дн."
-    return f"через {round(days / 30)} мес."
+        return "days", days
+    return "months", round(days / 30)
 
 
-def rating_options(card: Card) -> list[tuple[int, str, str]]:
-    """Для каждой оценки: (оценка, подпись, когда вернётся карточка)."""
+def rating_options(card: Card) -> list[tuple[int, str, tuple[str, int]]]:
+    """Для каждой оценки: (оценка, ключ перевода подписи rate.*, когда вернётся карточка)."""
     now = _utcnow()
     state = srs.State(card.interval_days, card.ease, card.reps, card.lapses, card.due)
-    return [(r, RATING_LABELS[r], format_wait(srs.schedule(state, r, now).due, now)) for r in (1, 2, 3, 4)]
+    return [(r, f"rate.{r}", format_wait(srs.schedule(state, r, now).due, now)) for r in (1, 2, 3, 4)]
