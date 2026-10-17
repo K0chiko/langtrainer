@@ -1,5 +1,6 @@
 """Конвейер: аудио -> реплики -> ошибки. Каждый шаг читает и пишет БД, поэтому его можно перезапустить."""
 
+import time
 import traceback
 
 from sqlmodel import Session as DBSession
@@ -9,6 +10,7 @@ from .analyzers import Finding, LearnerProfile, Line, get_analyzer
 from .cards import delete_unreviewed_cards, generate_cards
 from .db import get_engine
 from .models import Error, Learner, Participant, Session, Utterance
+from .progress import audio_duration, set_progress
 from .transcribers import get_transcriber
 
 
@@ -28,8 +30,22 @@ def transcribe_session(db: DBSession, session_id: int) -> None:
         db.exec(delete(Utterance).where(Utterance.session_id == session_id))
         db.commit()
     transcriber = get_transcriber()
-    for p in db.exec(select(Participant).where(Participant.session_id == session_id)).all():
-        for seg in transcriber.transcribe(p.audio_path, p.lang):
+    participants = db.exec(select(Participant).where(Participant.session_id == session_id).order_by(Participant.id)).all()
+    durations = [audio_duration(p.audio_path) for p in participants]
+    total = sum(d or 0.0 for d in durations) if all(durations) else 0.0  # 0 = длина неизвестна
+    set_progress(db, session_id, "transcribing", 0, total, restart=True)
+
+    offset = 0.0
+    for p, duration in zip(participants, durations):
+        last_write = [0.0]
+
+        def report(position: float, track_total: float, _offset: float = offset) -> None:
+            now = time.monotonic()
+            if now - last_write[0] >= 1.0:  # не чаще раза в секунду
+                last_write[0] = now
+                set_progress(db, session_id, "transcribing", _offset + min(position, track_total), total)
+
+        for seg in transcriber.transcribe(p.audio_path, p.lang, on_progress=report):
             db.add(
                 Utterance(
                     session_id=session_id,
@@ -40,7 +56,9 @@ def transcribe_session(db: DBSession, session_id: int) -> None:
                     asr_confidence=seg.confidence,
                 )
             )
-    db.commit()
+        db.commit()
+        offset += duration or 0.0
+    set_progress(db, session_id, "transcribing", total, total)
 
 
 def analyze_session(db: DBSession, session_id: int) -> None:
@@ -63,8 +81,11 @@ def analyze_session(db: DBSession, session_id: int) -> None:
         db.commit()
     kept = {(e.utterance_id, e.original, e.corrected) for e in old_errors if e.id in keep}
 
+    set_progress(db, session_id, "analyzing", 0, 0, restart=True)
     profile = LearnerProfile(learner.native_lang, learner.target_lang, learner.level)
-    findings: list[Finding] = get_analyzer().analyze(profile, lines)
+    findings: list[Finding] = get_analyzer().analyze(
+        profile, lines, on_progress=lambda done, batches: set_progress(db, session_id, "analyzing", done, batches)
+    )
     for f in findings:
         if (f.utterance_id, f.original, f.corrected) in kept:
             continue

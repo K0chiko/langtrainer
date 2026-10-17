@@ -106,3 +106,14 @@ class Insight(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
     based_on_errors: int = 0
     data: str
+
+
+class SessionProgress(SQLModel, table=True):
+    """Как идёт обработка разговора. Отдельная таблица, чтобы не менять уже существующую `session`."""
+
+    session_id: int = Field(primary_key=True, foreign_key="session.id")
+    phase: str = ""  # transcribing | analyzing; после сбоя остаётся фазой, на которой он случился
+    done: float = 0.0  # секунды аудио (transcribing) или число пакетов (analyzing)
+    total: float = 0.0  # 0 = объём пока неизвестен
+    phase_started_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)

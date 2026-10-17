@@ -1,6 +1,6 @@
 import math
 
-from .base import Segment
+from .base import ProgressCallback, Segment
 
 # Модели mlx-whisper лежат на Hugging Face под такими именами
 _REPOS = {
@@ -21,7 +21,8 @@ class MlxTranscriber:
 
         self._repo = _REPOS.get(model_name, model_name)
 
-    def transcribe(self, audio_path: str, lang: str) -> list[Segment]:
+    def transcribe(self, audio_path: str, lang: str, on_progress: ProgressCallback | None = None) -> list[Segment]:
+        # mlx-whisper отдаёт результат только целиком, поэтому прогресс по ходу дела недоступен
         import mlx_whisper
 
         result = mlx_whisper.transcribe(

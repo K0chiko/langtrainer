@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_job.html" import job_bar with context %}
 {% block content %}
 {% if sessions | selectattr('status', 'in', ['uploaded', 'transcribing', 'analyzing']) | list %}<meta http-equiv="refresh" content="5">{% endif %}
 <h1>{{ t('home.record') }}</h1>
@@ -28,7 +29,8 @@
 <h1>{{ t('home.list') }}</h1>
 {% for s in sessions %}
   <div class="card"><a href="/sessions/{{ s.id }}">{{ s.title }}</a>
-  <span class="muted"> · {{ (s.created_at|local).strftime('%d.%m.%Y %H:%M') }} · {{ tv('status', s.status) }}</span></div>
+  <span class="muted"> · {{ (s.created_at|local).strftime('%d.%m.%Y %H:%M') }} · {{ tv('status', s.status) }}{% if s.status_detail == 'interrupted' %} · {{ t('job.interrupted') }}{% endif %}</span>
+  {{ job_bar(jobs[s.id]) }}</div>
 {% else %}
   <p class="muted">{{ t('home.empty') }}</p>
 {% endfor %}

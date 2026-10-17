@@ -1,6 +1,6 @@
 from ..llm import ask_json
 from ..config import settings
-from .base import CATEGORIES, Finding, LearnerProfile, Line
+from .base import CATEGORIES, Finding, LearnerProfile, Line, ProgressCallback
 
 LANG_NAMES = {"en": "English", "ru": "Russian"}
 
@@ -45,18 +45,24 @@ def _lang(code: str) -> str:
 class LlmAnalyzer:
     """Анализ через языковую модель; провайдер выбирается в llm.py (Claude CLI, OpenAI-совместимый сервер, Anthropic API)."""
 
-    def analyze(self, profile: LearnerProfile, lines: list[Line]) -> list[Finding]:
+    def analyze(
+        self, profile: LearnerProfile, lines: list[Line], on_progress: ProgressCallback | None = None
+    ) -> list[Finding]:
         learner_idx = [i for i, ln in enumerate(lines) if ln.role == "learner"]
         findings: list[Finding] = []
         size = settings.analyze_batch_size
-        for b in range(0, len(learner_idx), size):
-            chunk = learner_idx[b : b + size]
+        batches = [learner_idx[b : b + size] for b in range(0, len(learner_idx), size)]
+        if on_progress:
+            on_progress(0, len(batches))
+        for n, chunk in enumerate(batches, start=1):
             lo = max(0, chunk[0] - CONTEXT_LINES)
             window = lines[lo : chunk[-1] + 1]
             valid_ids = {lines[i].utterance_id for i in chunk}
             for f in self._ask(profile, window):
                 if f.utterance_id in valid_ids and f.original.strip() and f.original != f.corrected:
                     findings.append(f)
+            if on_progress:
+                on_progress(n, len(batches))
         return findings
 
     def _prompt(self, profile: LearnerProfile, window: list[Line]) -> str:

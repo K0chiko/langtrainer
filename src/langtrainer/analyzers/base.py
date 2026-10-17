@@ -1,5 +1,9 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
+
+# on_progress(сколько пакетов готово, сколько всего)
+ProgressCallback = Callable[[int, int], None]
 
 CATEGORIES = ["grammar", "vocabulary", "preposition", "article", "word_order", "tense", "unnatural"]
 
@@ -33,6 +37,8 @@ class Finding:
 
 
 class Analyzer(Protocol):
-    def analyze(self, profile: LearnerProfile, lines: list[Line]) -> list[Finding]:
+    def analyze(
+        self, profile: LearnerProfile, lines: list[Line], on_progress: ProgressCallback | None = None
+    ) -> list[Finding]:
         """Найти ошибки в репликах с role == "learner". Реплики partner даны только как контекст."""
         ...

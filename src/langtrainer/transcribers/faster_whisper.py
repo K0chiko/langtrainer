@@ -1,6 +1,6 @@
 import math
 
-from .base import Segment
+from .base import ProgressCallback, Segment
 
 
 class FasterWhisperTranscriber:
@@ -12,16 +12,18 @@ class FasterWhisperTranscriber:
         self._english_only = model_name.endswith(".en")
         self._model = WhisperModel(model_name, device="auto", compute_type="auto")
 
-    def transcribe(self, audio_path: str, lang: str) -> list[Segment]:
-        segments, _ = self._model.transcribe(
+    def transcribe(self, audio_path: str, lang: str, on_progress: ProgressCallback | None = None) -> list[Segment]:
+        segments, info = self._model.transcribe(
             audio_path,
             # у моделей *.en параметр language недопустим
             language=None if self._english_only else lang,
             vad_filter=True,
             condition_on_previous_text=False,
         )
-        return [
-            Segment(s.start, s.end, s.text.strip(), min(1.0, math.exp(s.avg_logprob)))
-            for s in segments
-            if s.text.strip()
-        ]
+        result = []
+        for s in segments:  # генератор: Whisper работает, пока мы его перебираем
+            if s.text.strip():
+                result.append(Segment(s.start, s.end, s.text.strip(), min(1.0, math.exp(s.avg_logprob))))
+            if on_progress:
+                on_progress(s.end, info.duration)
+        return result

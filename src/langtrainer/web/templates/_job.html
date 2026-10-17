@@ -1,0 +1,8 @@
+{% macro job_bar(job) %}
+{% if job %}
+<div class="job">
+  <div class="muted">{{ tv('status', job.phase) }}{% if job.percent is not none %} · {{ job.percent }}%{% endif %}{% if job.percent is not none %} · {% if job.eta is none %}{{ t('job.eta_calc') }}{% elif job.eta < 60 %}{{ t('job.eta_soon') }}{% elif job.eta < 5400 %}{{ t('job.eta_min', n=(job.eta / 60) | round | int) }}{% else %}{{ t('job.eta_hm', h=(job.eta // 3600) | int, m=((job.eta % 3600) / 60) | round | int) }}{% endif %}{% endif %}</div>
+  <div class="bar"><span style="width:{{ job.percent or 0 }}%"></span></div>
+</div>
+{% endif %}
+{% endmacro %}

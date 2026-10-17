@@ -48,6 +48,16 @@ uv run langtrainer
 
 Then open http://127.0.0.1:8000 in your browser.
 
+### macOS: start it like a normal app
+
+```bash
+scripts/make_mac_app.sh
+```
+
+This builds `Language Trainer.app` in `~/Applications` (pass another folder as an argument to change that). Double-click it: it starts the server in the background and opens the page in your browser. Quit it from the Dock (right click, Quit) to stop the server; clicking its Dock icon again reopens the page. Server output goes to `data/server.log`.
+
+The first time you record a call, macOS asks for permission for the app. In System Settings, Privacy & Security, allow it under **Microphone** and **Screen & System Audio Recording** (the app is listed there as `applet`). Run the script again after moving the project folder, because the path is built into the app.
+
 Optional Apple Silicon speed-up: `uv sync --extra mlx`, then set `LT_TRANSCRIBER=mlx` (needs `ffmpeg` in PATH).
 
 ## Choosing a language model

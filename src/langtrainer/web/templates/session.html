@@ -1,10 +1,14 @@
 {% extends "base.html" %}
+{% from "_job.html" import job_bar with context %}
 {% block content %}
 {% if session.status not in ('done', 'failed') %}<meta http-equiv="refresh" content="4">{% endif %}
 <h1>{{ session.title }}</h1>
-<p class="muted">{{ t('session.status') }}: <b>{{ tv('status', session.status) }}</b>{% if session.status_detail %} — {{ session.status_detail }}{% endif %} · {{ t('session.mistakes') }}: {{ error_count }}</p>
-{% if session.status in ('done', 'failed') %}
+<p class="muted">{{ t('session.status') }}: <b>{{ tv('status', session.status) }}</b>{% if session.status_detail == 'interrupted' %} — {{ t('job.interrupted') }}{% elif session.status_detail %} — {{ session.status_detail }}{% endif %} · {{ t('session.mistakes') }}: {{ error_count }}</p>
+{{ job_bar(job) }}
+{% if session.status == 'done' %}
 <form method="post" action="/sessions/{{ session.id }}/reanalyze"><button>{{ t('session.reanalyze') }}</button></form>
+{% elif session.status == 'failed' %}
+<form method="post" action="/sessions/{{ session.id }}/retry"><button>{{ t('job.retry') }}</button></form>
 {% endif %}
 
 {% for u, role, errs in rows %}

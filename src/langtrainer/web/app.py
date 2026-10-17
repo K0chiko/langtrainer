@@ -12,8 +12,9 @@ from sqlmodel import select
 
 from ..config import settings
 from .. import advisor, cards, i18n, stats
+from .. import progress as job_progress  # имя `progress` занято функцией страницы /progress
 from ..db import get_db, get_engine, init_db
-from ..models import Error, Learner, Participant, Session, Utterance
+from ..models import Error, Learner, Participant, Session, SessionProgress, Utterance
 from ..pipeline import run_analysis, run_session
 from ..recording import RecorderError, recorder
 
@@ -46,9 +47,10 @@ templates.env.filters["local"] = lambda d: d.astimezone()
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    with DBSession(get_engine()) as db:  # карточки для ошибок, найденных до появления карточек
+    with DBSession(get_engine()) as db:
+        job_progress.mark_interrupted(db)  # задачи живут в процессе: после перезапуска «в обработке» = оборвано
         learner = db.exec(select(Learner)).first()
-        cards.generate_cards(db, learner.id)
+        cards.generate_cards(db, learner.id)  # карточки для ошибок, найденных до появления карточек
     yield
 
 
@@ -83,7 +85,12 @@ def index(request: Request, error: str = "", db: DBSession = Depends(get_db)):
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"sessions": sessions, "recording_since": recorder.started_at, "error": error},
+        {
+            "sessions": sessions,
+            "jobs": {s.id: job_progress.job_view(db.get(SessionProgress, s.id), s.status) for s in sessions},
+            "recording_since": recorder.started_at,
+            "error": error,
+        },
     )
 
 
@@ -174,6 +181,7 @@ def session_detail(session_id: int, request: Request, db: DBSession = Depends(ge
         "session.html",
         {
             "session": session,
+            "job": job_progress.job_view(db.get(SessionProgress, session_id), session.status),
             "rows": [(u, roles[u.participant_id], errors_by_utt.get(u.id, [])) for u in utterances],
             "error_count": len(errors),
         },
@@ -183,6 +191,23 @@ def session_detail(session_id: int, request: Request, db: DBSession = Depends(ge
 @app.post("/sessions/{session_id}/reanalyze")
 def reanalyze(session_id: int, background: BackgroundTasks):
     background.add_task(run_analysis, session_id)
+    return RedirectResponse(f"/sessions/{session_id}", status_code=303)
+
+
+@app.post("/sessions/{session_id}/retry")
+def retry(session_id: int, background: BackgroundTasks, db: DBSession = Depends(get_db)):
+    """Повтор после сбоя или остановки: продолжаем с той фазы, на которой оборвалось."""
+    session = db.get(Session, session_id)
+    if session is None:
+        raise HTTPException(404)
+    if session.status == "failed":
+        row = db.get(SessionProgress, session_id)
+        has_text = db.exec(select(Utterance.id).where(Utterance.session_id == session_id)).first() is not None
+        transcription_unfinished = (row.phase == "transcribing") if row else not has_text
+        session.status, session.status_detail = "uploaded", ""  # сразу видно в интерфейсе, двойной клик не запустит дубль
+        db.add(session)
+        db.commit()
+        background.add_task(run_session if transcription_unfinished else run_analysis, session_id)
     return RedirectResponse(f"/sessions/{session_id}", status_code=303)
 
 
