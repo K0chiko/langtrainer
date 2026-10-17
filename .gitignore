@@ -1,0 +1,8 @@
+data/
+.venv/
+__pycache__/
+*.pyc
+.env
+recorder/macos/ltrecord
+.DS_Store
+.pytest_cache/
