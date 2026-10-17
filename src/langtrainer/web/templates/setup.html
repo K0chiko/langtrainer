@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block nav %}<nav><main><b>Language Trainer</b><span class="langs">{% for code, name in languages.items() %}{% if code == lang %}<b>{{ name }}</b>{% else %}<a href="/lang/{{ code }}">{{ name }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</span></main></nav>{% endblock %}
+{% block content %}
+<h1>{{ t('setup.title') }}</h1>
+<p>{{ t('setup.intro') }}</p>
+{% if error %}<div class="card" style="border-left:3px solid var(--bad)">{{ t('setup.err.' ~ error) }}</div>{% endif %}
+<form class="card" method="post" action="/setup">
+  <label for="folder">{{ t('setup.label') }}</label>
+  <div class="row"><input type="text" id="folder" name="folder" value="{{ folder }}" required>
+  {% if can_browse %}<button type="button" id="browse">{{ t('setup.browse') }}</button>{% endif %}</div>
+  {% for kind, path in options %}
+  <p class="muted" style="margin:6px 0 0">{{ t('setup.option.' ~ kind) }}: <a href="#" class="pick" data-path="{{ path }}">{{ path }}</a></p>
+  {% endfor %}
+  <p><button type="submit">{{ t('setup.submit') }}</button></p>
+  <p class="muted">{{ t('setup.note') }}</p>
+</form>
+<script>
+const input = document.getElementById('folder');
+document.querySelectorAll('.pick').forEach(a => a.addEventListener('click', e => { e.preventDefault(); input.value = a.dataset.path; }));
+const browse = document.getElementById('browse');
+if (browse) browse.addEventListener('click', async () => {
+  browse.disabled = true;
+  try {
+    const r = await fetch('/setup/browse', {method: 'POST', body: new URLSearchParams({folder: input.value})});
+    const data = await r.json();
+    if (data.path) input.value = data.path;
+  } finally { browse.disabled = false; }
+});
+</script>
+{% endblock %}

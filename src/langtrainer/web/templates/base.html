@@ -29,7 +29,7 @@ input[type=text] { width:100%; box-sizing:border-box; font:inherit; padding:6px 
 </style>
 </head>
 <body>
-<nav><main><a href="/"><b>Language Trainer</b></a><a href="/">{{ t('nav.talks') }}</a><a href="/progress">{{ t('nav.progress') }}</a><a href="/errors">{{ t('nav.errors') }}</a><a href="/review">{{ t('nav.review') }}{% if due_count() %} <span class="tag">{{ due_count() }}</span>{% endif %}</a><span class="langs">{% for code, name in languages.items() %}{% if code == lang %}<b>{{ name }}</b>{% else %}<a href="/lang/{{ code }}">{{ name }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</span></main></nav>
+{% block nav %}<nav><main><a href="/"><b>Language Trainer</b></a><a href="/">{{ t('nav.talks') }}</a><a href="/progress">{{ t('nav.progress') }}</a><a href="/errors">{{ t('nav.errors') }}</a><a href="/review">{{ t('nav.review') }}{% if due_count() %} <span class="tag">{{ due_count() }}</span>{% endif %}</a><a href="/storage">{{ t('nav.storage') }}</a><span class="langs">{% for code, name in languages.items() %}{% if code == lang %}<b>{{ name }}</b>{% else %}<a href="/lang/{{ code }}">{{ name }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</span></main></nav>{% endblock %}
 <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

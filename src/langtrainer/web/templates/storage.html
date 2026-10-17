@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t('storage.title') }}</h1>
+<div class="card">
+  <div class="muted">{{ t('storage.folder') }}</div>
+  <p style="margin:4px 0; word-break:break-all"><b>{{ folder }}</b></p>
+  <p class="muted" style="margin:0 0 8px">{{ t('storage.source.' ~ source) }}</p>
+  <form method="post" action="/storage/open"><button>{{ t('storage.open') }}</button></form>
+</div>
+<div style="display:flex; gap:10px; flex-wrap:wrap">
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('storage.database') }}</div><b style="font-size:22px">{{ usage.database | size }}</b></div>
+  <div class="card" style="flex:1; min-width:140px"><div class="muted">{{ t('storage.audio') }}</div><b style="font-size:22px">{{ usage.audio | size }}</b></div>
+</div>
+<h1>{{ t('storage.by_session') }}</h1>
+{% for sid, title, status, bytes in rows %}
+<div class="card row" style="justify-content:space-between">
+  <span>{% if title %}<a href="/sessions/{{ sid }}">{{ title }}</a>{% else %}<span class="muted">#{{ sid }}</span>{% endif %} <span class="muted">· {{ bytes | size }}</span></span>
+  {% if status == 'done' and bytes %}
+  <form method="post" action="/sessions/{{ sid }}/delete-audio" onsubmit='return confirm({{ t("storage.confirm") | tojson }})'><button class="link">{{ t('storage.delete_audio') }}</button></form>
+  {% endif %}
+</div>
+{% else %}<p class="muted">{{ t('storage.empty') }}</p>{% endfor %}
+{% if other_audio %}<p class="muted">{{ t('storage.other') }}: {{ other_audio | size }}</p>{% endif %}
+<p class="muted">{{ t('storage.hint') }}</p>
+{% endblock %}

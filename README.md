@@ -48,13 +48,15 @@ uv run langtrainer
 
 Then open http://127.0.0.1:8000 in your browser.
 
+On the very first launch the app asks **where to keep its data** (the database and the recordings). Recordings are large, so choose a folder you can find and clean up yourself. A suggested folder (`Documents/LangTrainer`) is filled in; use *Browse…* or type any path, for example a folder on a NAS or an external drive. The choice is remembered, so you are not asked again.
+
 ### macOS: start it like a normal app
 
 ```bash
 scripts/make_mac_app.sh
 ```
 
-This builds `Language Trainer.app` in `~/Applications` (pass another folder as an argument to change that). Double-click it: it starts the server in the background and opens the page in your browser. Quit it from the Dock (right click, Quit) to stop the server; clicking its Dock icon again reopens the page. Server output goes to `data/server.log`.
+This builds `Language Trainer.app` in `~/Applications` (pass another folder as an argument to change that). Double-click it: it starts the server in the background and opens the page in your browser. Quit it from the Dock (right click, Quit) to stop the server; clicking its Dock icon again reopens the page. Server output goes to `data/server.log` inside the project folder.
 
 The first time you record a call, macOS asks for permission for the app. In System Settings, Privacy & Security, allow it under **Microphone** and **Screen & System Audio Recording** (the app is listed there as `applet`). Run the script again after moving the project folder, because the path is built into the app.
 
@@ -100,7 +102,7 @@ Settings are read from environment variables with the `LT_` prefix or from a `.e
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LT_DATA_DIR` | `data` | Folder for the database and audio. Can point to a network drive. |
+| `LT_DATA_DIR` | not set | Folder for the database and audio. If not set, the app asks on first launch. See [Data folder](#data-folder). |
 | `LT_DATABASE_URL` | empty | SQLAlchemy URL. Empty means SQLite in the data folder. |
 | `LT_TRANSCRIBER` | `auto` | `auto` (= faster-whisper), `faster-whisper` or `mlx` (Mac only, needs ffmpeg). |
 | `LT_WHISPER_MODEL` | `small` | Whisper model. Use `small.en` or `medium.en` for English-only, more accurate. |
@@ -113,6 +115,17 @@ Settings are read from environment variables with the `LT_` prefix or from a `.e
 
 Do not put the SQLite file on a network share (SMB/NFS): file locking over the network is unreliable. Use a local file with backups, or PostgreSQL via `LT_DATABASE_URL`.
 
+## Data folder
+
+The app stores everything it creates in one folder: `langtrainer.db` (conversations, mistakes, cards) and `audio/` (one subfolder per conversation).
+
+Where the folder comes from, strongest first:
+1. the `LT_DATA_DIR` environment variable;
+2. `LT_DATA_DIR` in a `.env` file;
+3. the folder chosen in the app on first launch. It is remembered in a tiny `config.json` in your user profile (macOS `~/Library/Application Support/LangTrainer`, Windows `%APPDATA%\LangTrainer`, Linux `~/.config/langtrainer`). That file holds only the folder path.
+
+The **Storage** page shows the folder, how much space the database and audio take, and the audio size of each conversation. From there you can open the folder in Finder/Explorer and delete the audio of a finished conversation. Deleting audio keeps its text, mistakes and cards. To free more space, delete a whole conversation from its page. Changing the folder after the first choice is not supported in the app yet: set `LT_DATA_DIR`, or remove `config.json` to be asked again, and move the files yourself.
+
 ## Project layout
 
 ```
@@ -123,6 +136,7 @@ src/langtrainer/
   i18n.py         interface strings (English, Russian)
   transcribers/   Transcriber interface, faster-whisper and mlx-whisper
   pipeline.py     transcribe -> analyze steps, each restartable
+  storage.py      data folder choice, disk usage
   recording.py    recorder facade and the macOS backend
   recording_windows.py  Windows backend (WASAPI loopback)
   cards.py, srs.py, stats.py, advisor.py
@@ -145,6 +159,7 @@ uv run pytest
 - The interface has two languages (English, Russian). Adding another means adding a block to `src/langtrainer/i18n.py`.
 - One learner profile per database (the first one is used everywhere). A mirror profile for the partner is planned.
 - Recording is not implemented for Linux.
+- The data folder cannot be changed from inside the app after the first launch (see [Data folder](#data-folder)).
 - Speech recognition of accented speech is imperfect, so some reported mistakes are noise. Dismiss them in the interface and they will not become cards.
 - With the `claude-cli` provider, your subscription's usage limits apply.
 - OpenAI-compatible and Anthropic providers are tested against a simulated server only, not yet against every real runtime.

@@ -5,13 +5,13 @@ from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 from sqlmodel import select
 
 from ..config import settings
-from .. import advisor, cards, i18n, session_ops, stats
+from .. import advisor, cards, i18n, session_ops, stats, storage
 from .. import progress as job_progress  # имя `progress` занято функцией страницы /progress
 from ..db import get_db, get_engine, init_db
 from ..models import Error, Learner, Participant, Session, SessionProgress, Utterance
@@ -42,19 +42,37 @@ def _due_count() -> int:
 templates.env.globals["due_count"] = _due_count
 # В БД время хранится в UTC, на странице показываем местное
 templates.env.filters["local"] = lambda d: d.astimezone()
+templates.env.filters["size"] = storage.format_size
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
+def _startup() -> None:
+    """Подготовка базы. Вызывается, когда папка данных известна: при запуске или сразу после её выбора."""
     init_db()
     with DBSession(get_engine()) as db:
         job_progress.mark_interrupted(db)  # задачи живут в процессе: после перезапуска «в обработке» = оборвано
         learner = db.exec(select(Learner)).first()
         cards.generate_cards(db, learner.id)  # карточки для ошибок, найденных до появления карточек
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    storage.apply_saved()
+    if not storage.needs_setup():
+        _startup()
     yield
 
 
 app = FastAPI(title="Language Trainer", lifespan=lifespan)
+
+_SETUP_OPEN = ("/setup", "/lang/")
+
+
+@app.middleware("http")
+async def require_data_folder(request: Request, call_next):
+    """Пока папка данных не выбрана, всё ведёт на экран выбора."""
+    if storage.needs_setup() and not request.url.path.startswith(_SETUP_OPEN):
+        return RedirectResponse("/setup", status_code=303)
+    return await call_next(request)
 
 
 def _save_upload(upload: UploadFile, session_id: int, name: str) -> str:
@@ -77,6 +95,84 @@ def set_language(code: str, request: Request):
     response = RedirectResponse(target if target.startswith("/") and not target.startswith("//") else "/", status_code=303)
     response.set_cookie(i18n.COOKIE, code, max_age=365 * 24 * 3600, samesite="lax")
     return response
+
+
+def _setup_page(request: Request, folder: str = "", error: str = ""):
+    options = storage.suggested_folders()
+    return templates.TemplateResponse(
+        request,
+        "setup.html",
+        {
+            "options": options,
+            "folder": folder or str(options[0][1]),
+            "error": error,
+            "can_browse": storage.browse_available(),
+        },
+    )
+
+
+@app.get("/setup")
+def setup_form(request: Request):
+    if not storage.needs_setup():
+        return RedirectResponse("/", status_code=303)
+    return _setup_page(request)
+
+
+@app.post("/setup")
+def setup_save(request: Request, folder: str = Form("")):
+    if not storage.needs_setup():
+        return RedirectResponse("/", status_code=303)
+    try:
+        storage.choose_data_dir(folder)
+    except storage.StorageError as exc:
+        return _setup_page(request, folder, exc.code)
+    _startup()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/setup/browse")
+def setup_browse(folder: str = Form("")):
+    return JSONResponse({"path": storage.browse_folder(folder)})
+
+
+@app.get("/storage")
+def storage_page(request: Request, db: DBSession = Depends(get_db)):
+    data_dir = settings.require_data_dir()
+    used = storage.usage(data_dir)
+    titles = {s.id: (s.title, s.status) for s in db.exec(select(Session)).all()}
+    rows = sorted(
+        ((sid, titles.get(sid, ("", ""))[0], titles.get(sid, ("", ""))[1], size) for sid, size in used.per_session.items()),
+        key=lambda r: -r[3],
+    )
+    return templates.TemplateResponse(
+        request,
+        "storage.html",
+        {
+            "folder": data_dir.resolve(),
+            "source": storage.source(),
+            "usage": used,
+            "other_audio": max(0, used.audio - sum(used.per_session.values())),
+            "rows": rows,
+        },
+    )
+
+
+@app.post("/storage/open")
+def storage_open():
+    storage.open_folder(settings.require_data_dir())
+    return RedirectResponse("/storage", status_code=303)
+
+
+@app.post("/sessions/{session_id}/delete-audio")
+def delete_audio(session_id: int, request: Request, db: DBSession = Depends(get_db)):
+    if db.get(Session, session_id) is None:
+        raise HTTPException(404)
+    try:
+        session_ops.delete_audio(db, session_id, settings.audio_dir)
+    except session_ops.AudioNotDeletable:
+        pass
+    back = urlparse(request.headers.get("referer", "")).path
+    return RedirectResponse(back if back in ("/storage", f"/sessions/{session_id}") else f"/sessions/{session_id}", status_code=303)
 
 
 @app.get("/")
@@ -184,6 +280,7 @@ def session_detail(session_id: int, request: Request, db: DBSession = Depends(ge
             "job": job_progress.job_view(db.get(SessionProgress, session_id), session.status),
             "rows": [(u, roles[u.participant_id], errors_by_utt.get(u.id, [])) for u in utterances],
             "error_count": len(errors),
+            "audio_bytes": storage.session_audio_bytes(settings.audio_dir, session_id),
         },
     )
 

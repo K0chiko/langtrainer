@@ -8,8 +8,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="LT_", env_file=".env", extra="ignore")
 
-    # Куда класть аудио и (по умолчанию) файл SQLite. Можно указать папку на Synology.
-    data_dir: Path = Path("data")
+    # Куда класть аудио и (по умолчанию) файл SQLite. Не задана = приложение спросит папку при первом запуске
+    # (см. storage.py). Можно указать папку на Synology или внешнем диске.
+    data_dir: Path | None = None
     # SQLAlchemy URL. Пусто = SQLite в data_dir. Пример для Synology: postgresql+psycopg://user:pw@nas:5432/lt
     database_url: str = ""
 
@@ -31,11 +32,16 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        return self.database_url or f"sqlite:///{(self.data_dir / 'langtrainer.db').resolve()}"
+        return self.database_url or f"sqlite:///{(self.require_data_dir() / 'langtrainer.db').resolve()}"
 
     @property
     def audio_dir(self) -> Path:
-        return self.data_dir / "audio"
+        return self.require_data_dir() / "audio"
+
+    def require_data_dir(self) -> Path:
+        if self.data_dir is None:
+            raise RuntimeError("The data folder has not been chosen yet.")
+        return self.data_dir
 
 
 settings = Settings()

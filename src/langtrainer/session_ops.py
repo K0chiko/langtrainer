@@ -76,3 +76,26 @@ def delete_session(db: DBSession, session_id: int, audio_dir: Path) -> None:
     root, folder = audio_dir.resolve(), (audio_dir / str(session_id)).resolve()
     if folder.parent == root and folder.is_dir():
         shutil.rmtree(folder, ignore_errors=True)
+
+
+class AudioNotDeletable(RuntimeError):
+    """Аудио можно удалить только у завершённого разговора: иначе повтор после сбоя не найдёт файлы."""
+
+
+def delete_audio(db: DBSession, session_id: int, audio_dir: Path) -> int:
+    """Удаляет только звук разговора (расшифровка, ошибки и карточки остаются). Возвращает освобождённые байты."""
+    session = db.get(Session, session_id)
+    if session is None:
+        return 0
+    if session.status != "done":
+        raise AudioNotDeletable(session_id)
+    root, folder = audio_dir.resolve(), (audio_dir / str(session_id)).resolve()
+    freed = 0
+    if folder.parent == root and folder.is_dir():
+        freed = sum(f.stat().st_size for f in folder.rglob("*") if f.is_file())
+        shutil.rmtree(folder, ignore_errors=True)
+    for p in db.exec(select(Participant).where(Participant.session_id == session_id)).all():
+        p.audio_path = ""
+        db.add(p)
+    db.commit()
+    return freed

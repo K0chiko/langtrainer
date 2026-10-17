@@ -12,7 +12,7 @@ _engine = None
 def get_engine():
     global _engine
     if _engine is None:
-        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        settings.require_data_dir().mkdir(parents=True, exist_ok=True)
         settings.audio_dir.mkdir(parents=True, exist_ok=True)
         connect_args = {"check_same_thread": False} if settings.db_url.startswith("sqlite") else {}
         _engine = create_engine(settings.db_url, connect_args=connect_args)
