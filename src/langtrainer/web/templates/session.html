@@ -3,13 +3,22 @@
 {% block content %}
 {% if session.status not in ('done', 'failed') %}<meta http-equiv="refresh" content="4">{% endif %}
 <h1>{{ session.title }}</h1>
+<details class="rename"><summary>{{ t('session.rename') }}</summary>
+  <form method="post" action="/sessions/{{ session.id }}/rename" class="row">
+    <input type="text" name="title" value="{{ session.title }}" maxlength="200" required>
+    <button>{{ t('session.rename_save') }}</button>
+  </form>
+</details>
 <p class="muted">{{ t('session.status') }}: <b>{{ tv('status', session.status) }}</b>{% if session.status_detail == 'interrupted' %} — {{ t('job.interrupted') }}{% elif session.status_detail %} — {{ session.status_detail }}{% endif %} · {{ t('session.mistakes') }}: {{ error_count }}</p>
 {{ job_bar(job) }}
+<div class="row">
 {% if session.status == 'done' %}
 <form method="post" action="/sessions/{{ session.id }}/reanalyze"><button>{{ t('session.reanalyze') }}</button></form>
 {% elif session.status == 'failed' %}
 <form method="post" action="/sessions/{{ session.id }}/retry"><button>{{ t('job.retry') }}</button></form>
 {% endif %}
+<a class="danger" href="/sessions/{{ session.id }}/delete">{{ t('session.delete') }}</a>
+</div>
 
 {% for u, role, errs in rows %}
 <div class="utt {{ role }}">

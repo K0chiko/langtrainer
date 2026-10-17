@@ -88,3 +88,34 @@ def test_retry_ignored_unless_failed(client):
     sid = add_session(client.engine, "done")
     client.post(f"/sessions/{sid}/retry", follow_redirects=False)
     assert client.started == []
+
+
+def test_rename_via_page(client):
+    sid = add_session(client.engine, "done")
+    page = client.get(f"/sessions/{sid}").text
+    assert f'action="/sessions/{sid}/rename"' in page
+    assert client.post(f"/sessions/{sid}/rename", data={"title": " New name "}, follow_redirects=False).status_code == 303
+    assert "New name" in client.get(f"/sessions/{sid}").text
+    client.post(f"/sessions/{sid}/rename", data={"title": ""})  # пустое игнорируется
+    assert "New name" in client.get(f"/sessions/{sid}").text
+    assert client.post("/sessions/9999/rename", data={"title": "x"}).status_code == 404
+
+
+def test_delete_needs_confirmation_and_removes(client):
+    sid = add_session(client.engine, "done", with_text=True)
+    keep = add_session(client.engine, "done")
+    confirm = client.get(f"/sessions/{sid}/delete")
+    assert confirm.status_code == 200 and f'action="/sessions/{sid}/delete"' in confirm.text
+    assert client.get(f"/sessions/{sid}").status_code == 200  # просто открыть страницу подтверждения ничего не удаляет
+    assert client.post(f"/sessions/{sid}/delete", follow_redirects=False).headers["location"] == "/"
+    assert client.get(f"/sessions/{sid}").status_code == 404
+    assert client.get(f"/sessions/{keep}").status_code == 200
+    assert client.get("/sessions/9999/delete").status_code == 404
+
+
+def test_delete_blocked_while_processing(client):
+    sid = add_session(client.engine, "transcribing", phase="transcribing")
+    page = client.get(f"/sessions/{sid}/delete").text
+    assert f'action="/sessions/{sid}/delete"' not in page  # кнопки подтверждения нет
+    client.post(f"/sessions/{sid}/delete", follow_redirects=False)
+    assert client.get(f"/sessions/{sid}").status_code == 200

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t('delete.title') }}</h1>
+<div class="card">
+  <p style="margin-top:0"><b>{{ session.title }}</b></p>
+  {% if busy %}
+    <p>{{ t('delete.busy') }}</p>
+    <a href="/sessions/{{ session.id }}">{{ t('delete.cancel') }}</a>
+  {% else %}
+    <p>{{ t('delete.what') }}</p>
+    <p><b>{{ t('delete.impact', utterances=impact.utterances, errors=impact.errors, cards=impact.cards) }}</b></p>
+    {% if impact.reviewed_cards %}<p class="danger">{{ t('delete.reviewed', n=impact.reviewed_cards) }}</p>{% endif %}
+    <p class="muted">{{ t('delete.cannot_undo') }}</p>
+    <form method="post" action="/sessions/{{ session.id }}/delete" class="row">
+      <button class="danger">{{ t('delete.confirm') }}</button>
+      <a href="/sessions/{{ session.id }}">{{ t('delete.cancel') }}</a>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

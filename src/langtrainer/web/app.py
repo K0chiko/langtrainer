@@ -11,7 +11,7 @@ from sqlmodel import Session as DBSession
 from sqlmodel import select
 
 from ..config import settings
-from .. import advisor, cards, i18n, stats
+from .. import advisor, cards, i18n, session_ops, stats
 from .. import progress as job_progress  # имя `progress` занято функцией страницы /progress
 from ..db import get_db, get_engine, init_db
 from ..models import Error, Learner, Participant, Session, SessionProgress, Utterance
@@ -209,6 +209,40 @@ def retry(session_id: int, background: BackgroundTasks, db: DBSession = Depends(
         db.commit()
         background.add_task(run_session if transcription_unfinished else run_analysis, session_id)
     return RedirectResponse(f"/sessions/{session_id}", status_code=303)
+
+
+@app.post("/sessions/{session_id}/rename")
+def rename(session_id: int, title: str = Form(""), db: DBSession = Depends(get_db)):
+    if db.get(Session, session_id) is None:
+        raise HTTPException(404)
+    session_ops.rename_session(db, session_id, title)
+    return RedirectResponse(f"/sessions/{session_id}", status_code=303)
+
+
+@app.get("/sessions/{session_id}/delete")
+def delete_confirm(session_id: int, request: Request, db: DBSession = Depends(get_db)):
+    """Страница подтверждения: показывает, что именно пропадёт вместе с разговором."""
+    session = db.get(Session, session_id)
+    if session is None:
+        raise HTTPException(404)
+    return templates.TemplateResponse(
+        request,
+        "delete.html",
+        {
+            "session": session,
+            "impact": session_ops.deletion_impact(db, session_id),
+            "busy": session.status in job_progress.IN_PROGRESS,
+        },
+    )
+
+
+@app.post("/sessions/{session_id}/delete")
+def delete(session_id: int, db: DBSession = Depends(get_db)):
+    try:
+        session_ops.delete_session(db, session_id, settings.audio_dir)
+    except session_ops.SessionBusy:
+        return RedirectResponse(f"/sessions/{session_id}/delete", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/errors/{error_id}/dismiss")
