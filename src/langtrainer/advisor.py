@@ -5,7 +5,7 @@ import json
 from sqlmodel import Session as DBSession
 from sqlmodel import select
 
-from .claude_cli import ask_json
+from .llm import ask_json
 from .config import settings
 from .models import Insight, Learner
 from .stats import WeakSpot, weak_spots

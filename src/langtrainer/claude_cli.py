@@ -21,8 +21,8 @@ def ask_json(prompt: str, schema: dict, timeout: int = 600) -> dict:
         "--no-session-persistence",
         "--strict-mcp-config",
     ]
-    if settings.claude_model:
-        cmd += ["--model", settings.claude_model]
+    if settings.llm_model:
+        cmd += ["--model", settings.llm_model]
     # Отдельная пустая рабочая папка, чтобы CLI не подхватывал чужие CLAUDE.md и настройки проекта
     with tempfile.TemporaryDirectory() as cwd:
         proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, cwd=cwd, timeout=timeout)

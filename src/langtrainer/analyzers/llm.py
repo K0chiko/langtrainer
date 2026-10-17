@@ -1,4 +1,4 @@
-from ..claude_cli import ask_json
+from ..llm import ask_json
 from ..config import settings
 from .base import CATEGORIES, Finding, LearnerProfile, Line
 
@@ -42,8 +42,8 @@ def _lang(code: str) -> str:
     return LANG_NAMES.get(code, code)
 
 
-class ClaudeCliAnalyzer:
-    """Анализ через Claude Code CLI (`claude -p`) под подпиской пользователя, без API-ключа."""
+class LlmAnalyzer:
+    """Анализ через языковую модель; провайдер выбирается в llm.py (Claude CLI, OpenAI-совместимый сервер, Anthropic API)."""
 
     def analyze(self, profile: LearnerProfile, lines: list[Line]) -> list[Finding]:
         learner_idx = [i for i, ln in enumerate(lines) if ln.role == "learner"]

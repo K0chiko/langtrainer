@@ -19,9 +19,14 @@ class Settings(BaseSettings):
     # Для только английского можно взять "small.en" / "medium.en" (точнее).
     whisper_model: str = "small"
 
-    # Анализатор ошибок. Сейчас реализован только "claude-cli" (по подписке).
-    analyzer: str = "claude-cli"
-    claude_model: str = ""  # пусто = модель по умолчанию в CLI
+    # Языковая модель для разбора ошибок и советов:
+    #   "claude-cli" (по подписке, без ключа), "openai" (любой OpenAI-совместимый сервер: OpenAI, OpenRouter,
+    #   локальные Ollama / LM Studio / llama.cpp), "anthropic" (API-ключ Anthropic).
+    llm_provider: str = "claude-cli"
+    llm_model: str = ""  # для claude-cli пусто = модель по умолчанию; для остальных провайдеров обязательно
+    llm_base_url: str = ""  # для openai: например http://localhost:11434/v1 (Ollama); пусто = api.openai.com
+    llm_api_key: str = ""  # локальным серверам обычно не нужен
+    llm_timeout: int = 600  # секунд на один запрос; локальным моделям на CPU может понадобиться больше
     analyze_batch_size: int = 60  # реплик на один запрос
 
     @property
